@@ -14,29 +14,41 @@ AI agent skills for working with Threaded. These skills teach AI agents (Cursor,
 
 ## Installation
 
-Skills are installed by copying the `skills/` directory contents into your AI agent's skills folder. Each agent looks for `SKILL.md` files one level deep inside the skills directory.
+### Via npx (recommended)
 
-### Cursor
-
-Copy skills to your project's `.cursor/skills/` folder, or to `~/.cursor/skills/` for personal (cross-project) access:
+Use [`npx skills`](https://github.com/vercel-labs/skills) to install to Cursor, Claude Code, and [50+ other agents](https://github.com/vercel-labs/skills#supported-agents):
 
 ```bash
-# Project-level (shared with collaborators via version control)
-cp -r skills/* /path/to/your/project/.cursor/skills/
+# Install all skills to your project
+npx skills add threadedmfg/threaded-skills
 
-# Personal (available across all your projects)
-cp -r skills/* ~/.cursor/skills/
+# Install globally (available across all your projects)
+npx skills add threadedmfg/threaded-skills --global
+
+# Install a specific skill
+npx skills add threadedmfg/threaded-skills --skill create-work-instructions-from-document
+
+# Install to a specific agent
+npx skills add threadedmfg/threaded-skills --agent cursor
+npx skills add threadedmfg/threaded-skills --agent claude-code
 ```
 
-### Claude Code
+### Manual install
 
-Copy skills to your project's `.claude/skills/` folder:
+Copy skills directly into your agent's skills folder:
 
 ```bash
+# Cursor — project-level (shared with team via version control)
+cp -r skills/* /path/to/your/project/.cursor/skills/
+
+# Cursor — personal (available across all your projects)
+cp -r skills/* ~/.cursor/skills/
+
+# Claude Code
 cp -r skills/* /path/to/your/project/.claude/skills/
 ```
 
-After copying, the agent will automatically discover and use the skills when relevant tasks are requested.
+After installing, the agent will automatically discover and use the skills when relevant tasks are requested.
 
 ## Prerequisites
 
