@@ -1,16 +1,17 @@
 # threaded-skills
 
-AI agent skills for working with Threaded. These skills teach AI agents (Cursor, Claude Code, and others) how to perform common Threaded workflows — importing data, building process maps, and creating work instructions from documents and videos.
+AI agent skills for working with Threaded. These skills teach AI agents (Cursor, Claude Code, and others) how to perform common Threaded workflows — importing data and creating work instructions from documents and videos.
 
 ## Skills
 
-| Skill | Description |
-|---|---|
-| [create-tools-from-document](skills/create-tools-from-document/) | Import a tool inventory from a CSV, spreadsheet, or JSON file into Threaded |
-| [create-parts-from-document](skills/create-parts-from-document/) | Import a part library from a CSV, spreadsheet, or JSON file into Threaded |
-| [create-work-instructions-from-document](skills/create-work-instructions-from-document/) | Import work instructions from a PDF into Threaded — extracts images, structures procedures, and creates WIs with visuals attached |
-| [create-work-instructions-from-video](skills/create-work-instructions-from-video/) | Create work instructions from a video demonstrating a process — extracts frames, identifies steps, and creates WIs with reference images |
-| [create-map-from-document](skills/create-map-from-document/) | Build a Threaded Map (value stream map) from a process flow document |
+| Skill | Description | MCP | CLI |
+|---|---|---|---|
+| [create-tools-from-document](skills/create-tools-from-document/) | Import a tool inventory from a CSV, spreadsheet, or JSON file into Threaded | ✓ | ✓ |
+| [create-parts-from-document](skills/create-parts-from-document/) | Import a part library from a CSV, spreadsheet, or JSON file into Threaded | ✓ | ✓ |
+| [create-work-instructions-from-document](skills/create-work-instructions-from-document/) | Import work instructions from a document — extracts images, structures procedures, and creates WIs with visuals attached | Partial* | ✓ |
+| [create-work-instructions-from-video](skills/create-work-instructions-from-video/) | Create work instructions from a video demonstrating a process — extracts frames, identifies steps, and creates WIs with reference images | — | ✓ |
+
+\* MCP supports creating folders and WI structure. Media upload and visual attachment require the CLI.
 
 ## Installation
 
@@ -52,12 +53,23 @@ After installing, the agent will automatically discover and use the skills when 
 
 ## Prerequisites
 
-All skills require the Threaded CLI to be installed and authenticated. Run `threaded auth status` to verify.
+Skills work with the **Threaded MCP server** or the **Threaded CLI**. The MCP server is the easiest way to get started — no local installation required.
+
+### MCP users
+
+Connect your AI agent to the Threaded MCP server and authenticate. Once connected, skills will detect the MCP runtime automatically. No additional software is needed for tools and parts imports.
+
+### CLI users
+
+Install and authenticate the Threaded CLI:
+
+```bash
+threaded auth status  # verify you're logged in
+```
 
 | Skill | Additional requirements |
 |---|---|
 | create-tools-from-document | Python 3; `pip3 install openpyxl` for XLSX sources |
 | create-parts-from-document | Python 3; `pip3 install openpyxl` for XLSX sources |
-| create-work-instructions-from-document | Python 3; `pip3 install PyMuPDF`; for rasterized PDFs also `brew install tesseract` and `pip3 install pytesseract Pillow numpy scipy` |
+| create-work-instructions-from-document | Python 3; `pip3 install PyMuPDF`; for rasterized PDFs also `brew install tesseract` and `pip3 install pytesseract Pillow` |
 | create-work-instructions-from-video | `brew install ffmpeg`; Python 3 |
-| create-map-from-document | Python 3; `pip3 install openpyxl` for XLSX sources |

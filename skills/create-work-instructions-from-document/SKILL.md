@@ -6,10 +6,15 @@ description: >-
   to identify procedures and steps, authors the work instruction structure, and imports it
   into Threaded with reference images attached as visuals. Use when a user has a
   document demonstrating a process and wants to turn it into Threaded work
-  instructions.
+  instructions. MCP users can create folder and WI structure; image upload and
+  visual attachment require the Threaded CLI.
 ---
 
 # Create Work Instructions from a Document
+
+> **Before starting:** Read `skills/SHARED.md` (or the `threaded-runner-setup` skill) to determine whether you are running via MCP or CLI, check auth status, and confirm the organization UUID.
+
+> **MCP users — media upload limitation:** Uploading images and attaching visuals (Phases 7 and 9) requires the Threaded CLI. If you are running via MCP only, you can complete Phases 1–6 and Phase 8 to create the folder and WI structure, but you will need CLI access to upload images and attach them as visuals.
 
 ## Collect inputs before starting
 
@@ -136,7 +141,7 @@ print(f'{len(doc)} pages rendered')
 python3 -c "
 from docx import Document
 from pathlib import Path
-import shutil, json
+import json
 doc = Document('<DOCUMENT_PATH>')
 images_dir = Path('<WORK_DIR>/images')
 images_dir.mkdir(exist_ok=True)
@@ -236,34 +241,9 @@ Show the user the full bulk JSON for review and confirm before creating anything
 
 ## Phase 7: Upload media
 
-### Calling the Threaded CLI
-
-> **Important:** `threaded` is a shell function, not a standalone binary. It must be called from a shell where the Threaded CLI has been sourced.
+> **CLI only.** Uploading binary image files requires the Threaded CLI. The MCP server does not have access to your local filesystem.
 >
-> From a terminal (normal usage):
-> ```bash
-> threaded task work-instruction:media:upload ...
-> ```
->
-> From a Python subprocess, use `zsh -i -c`:
-> ```python
-> import subprocess, json
->
-> THREADED_CLI_PATH = "<path to your Threaded CLI shell aliases file>"
->
-> def run_threaded(cmd_args: str):
->     result = subprocess.run(
->         ["zsh", "-i", "-c", f"source {THREADED_CLI_PATH}; threaded {cmd_args}"],
->         capture_output=True, text=True,
->     )
->     output = result.stdout
->     idx_obj = output.find('{')
->     idx_arr = output.find('[')
->     candidates = [i for i in [idx_obj, idx_arr] if i != -1]
->     if not candidates:
->         raise RuntimeError(f"No JSON in output (exit {result.returncode}):\n{output[:400]}\nstderr:\n{result.stderr[:400]}")
->     return json.loads(output[min(candidates):])
-> ```
+> If you are running via MCP only, skip to Phase 8 to create the WI structure without visuals. You can attach visuals later using the CLI.
 
 For each image in `WORK_DIR/images/`:
 
@@ -292,6 +272,12 @@ Report progress (X of Y images uploaded).
 
 ### 8a. Create the folder
 
+**MCP:**
+```
+execute_threaded_script(script="threaded task work-instruction:folder:create --name '<FOLDER_NAME>' --organization <ORG_UUID>")
+```
+
+**CLI:**
 ```bash
 threaded task work-instruction:folder:create \
   --name "<FOLDER_NAME>" \
@@ -302,6 +288,17 @@ Capture the folder UUID from `{ "uuid": "wif-..." }`. Update the bulk JSON `fold
 
 ### 8b. Create the work instruction
 
+Write the bulk JSON content to `WORK_DIR/bulk/<wi-name-slug>.json` (already done in Phase 6, updated with `folder_uuid`).
+
+**MCP** — write the JSON to a temp file and run `bulk-create`:
+```
+execute_threaded_script(script="""cat > /tmp/<wi-name-slug>.json << 'EOJSON'
+<contents of WORK_DIR/bulk/<wi-name-slug>.json>
+EOJSON
+threaded task work-instruction:bulk-create --file /tmp/<wi-name-slug>.json --organization <ORG_UUID>""")
+```
+
+**CLI:**
 ```bash
 threaded task work-instruction:bulk-create \
   --file "<WORK_DIR>/bulk/<wi-name-slug>.json" \
@@ -315,6 +312,8 @@ Save the full result to `WORK_DIR/results.json`.
 ---
 
 ## Phase 9: Attach visuals
+
+> **CLI only.** Attaching visuals requires media UUIDs from Phase 7, which requires the CLI. Skip this phase if running via MCP only.
 
 For each procedure and each image assigned to it in `image_assignments.json`:
 
@@ -340,6 +339,14 @@ For each procedure and each image assigned to it in `image_assignments.json`:
 ## Phase 10: Verify and summarize
 
 1. Spot-check 1–2 procedures:
+
+   **MCP:**
+   ```
+   execute_threaded_script(script="threaded task work-instruction:step:list --procedure-version <prv-uuid>")
+   execute_threaded_script(script="threaded task work-instruction:visual:list --procedure-version <prv-uuid>")
+   ```
+
+   **CLI:**
    ```bash
    # Verify steps
    threaded task work-instruction:step:list --procedure-version <prv-uuid>
@@ -347,7 +354,8 @@ For each procedure and each image assigned to it in `image_assignments.json`:
    # Verify visuals
    threaded task work-instruction:visual:list --procedure-version <prv-uuid>
    ```
-   Confirm step count, step types, and that each visual has a non-empty `remote_media_uuid`.
+
+   Confirm step count, step types, and (if visuals were attached) that each visual has a non-empty `remote_media_uuid`.
 
 2. Print a summary:
    ```

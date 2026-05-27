@@ -6,10 +6,13 @@ description: >-
   procedures and steps, authors the work instruction structure, and imports it
   into Threaded with reference images attached as visuals. Use when a user has a
   video demonstrating a process and wants to turn it into Threaded work
-  instructions.
+  instructions. Requires the Threaded CLI — video frame extraction and media
+  upload are not supported via the MCP server.
 ---
 
 # Create Work Instructions from a Video
+
+> **CLI only.** This skill requires the Threaded CLI. Video frame extraction (ffmpeg) and image upload to Threaded are local file operations that the MCP server cannot perform. Ensure `threaded auth status` confirms you are authenticated before starting.
 
 ## Collect inputs before starting
 
@@ -145,35 +148,6 @@ Show the user the full bulk JSON for review and confirm before creating anything
 ---
 
 ## Phase 6: Upload reference images
-
-### Calling the Threaded CLI
-
-> **Important:** `threaded` is a shell function, not a standalone binary. It must be called from a shell where the Threaded CLI has been sourced.
->
-> From a terminal (normal usage):
-> ```bash
-> threaded task work-instruction:media:upload ...
-> ```
->
-> From a Python subprocess, use `zsh -i -c`:
-> ```python
-> import subprocess, json
->
-> THREADED_CLI_PATH = "<path to your Threaded CLI shell aliases file>"
->
-> def run_threaded(cmd_args: str):
->     result = subprocess.run(
->         ["zsh", "-i", "-c", f"source {THREADED_CLI_PATH}; threaded {cmd_args}"],
->         capture_output=True, text=True,
->     )
->     output = result.stdout
->     idx_obj = output.find('{')
->     idx_arr = output.find('[')
->     candidates = [i for i in [idx_obj, idx_arr] if i != -1]
->     if not candidates:
->         raise RuntimeError(f"No JSON in output (exit {result.returncode}):\n{output[:400]}\nstderr:\n{result.stderr[:400]}")
->     return json.loads(output[min(candidates):])
-> ```
 
 For each image in `WORK_DIR/images/`:
 

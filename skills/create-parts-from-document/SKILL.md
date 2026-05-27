@@ -2,12 +2,15 @@
 name: create-parts-from-document
 description: >-
   Import a manufacturing part library from an external document (CSV,
-  spreadsheet, JSON, etc.) into a Threaded organization using the CLI. Use when
-  a user has an existing part list in any tabular format and wants to add those
-  parts to Threaded.
+  spreadsheet, JSON, etc.) into a Threaded organization. Works with the
+  Threaded MCP server or directly with the Threaded CLI. Use when a user has
+  an existing part list in any tabular format and wants to add those parts to
+  Threaded.
 ---
 
 # Create Parts from a Document
+
+> **Before starting:** Read `skills/SHARED.md` (or the `threaded-runner-setup` skill) to determine whether you are running via MCP or CLI, check auth status, and confirm the organization UUID.
 
 ## Collect inputs before starting
 
@@ -15,7 +18,6 @@ Ask the user for these if not already provided:
 
 - **`ORG_UUID`** (required) — Threaded organization UUID
 - **`DOCUMENT_PATH`** (required) — absolute or relative path to the source file
-- **`WORK_DIR`** (optional) — directory to write intermediate files; defaults to a folder named after the document stem alongside the source file
 
 ---
 
@@ -34,7 +36,7 @@ For CSV/TSV, use Python's `csv` module. For JSON, load and inspect the array. Fo
 
 ### 1b. Map document fields to CLI fields
 
-The Threaded `part:create` / `part:bulk-create` command accepts these fields:
+The Threaded `part:bulk-create` command accepts these fields:
 
 | CLI field | Type | Notes |
 |---|---|---|
@@ -80,7 +82,7 @@ If a source value doesn't match any pattern above, flag it to the user rather th
 
 ### 1c. Confirm the full mapping in a single step
 
-Present **one** mapping table covering every column — auto-detected and proposed — and wait for a single response before writing any code:
+Present **one** mapping table covering every column — auto-detected and proposed — and wait for a single response before proceeding:
 
 ```
 Proposed mapping for <filename>:
@@ -102,99 +104,33 @@ Wait for the user's reply before proceeding. Do not ask about columns individual
 
 ---
 
-## Phase 2: Write the conversion script
+## Phase 2: Generate the parts JSON
 
-### 2a. Create the work directory
+Parse the source file and produce a JSON array of part objects matching the confirmed mapping. No intermediate files are needed — generate the array directly.
 
-```bash
-mkdir -p <WORK_DIR>
+Use the appropriate library to read the source:
+- **CSV/TSV:** Python's `csv.DictReader` (use `encoding="utf-8-sig"` for Excel exports)
+- **JSON:** load directly
+- **XLSX:** `openpyxl` (`pip3 install openpyxl` if missing)
+
+Apply the confirmed mapping:
+- Omit optional fields when the source value is blank/null/empty
+- Skip rows where `part_number` is blank and report them to the user
+- Translate `make_or_buy` source values to the Threaded enum values; flag any unrecognized values before proceeding
+- Concatenate multiple source columns into `notes` with a separator (e.g. `"; "`)
+
+Preview the first 5 entries, the total count, and any skipped/flagged rows. Confirm with the user that the output looks correct before running any Threaded commands.
+
+**Expected output shape:**
+```json
+[
+  {"part_number": "PN-001", "description": "Lid assembly", "make_or_buy": "make"},
+  {"part_number": "PN-002", "make_or_buy": "buy", "notes": "Vendor: Acme Corp"},
+  ...
+]
 ```
 
-### 2b. Write the script
-
-Write a Python conversion script to `WORK_DIR/convert_to_parts_json.py`. The script must:
-
-1. Read the source file using the appropriate library
-2. Apply the confirmed field mapping
-3. Omit optional fields when the source value is blank/null/empty
-4. Validate `make_or_buy` values and raise a clear error for unrecognized ones
-5. Write the output to `WORK_DIR/parts.json` as a JSON array
-
-**Template for CSV sources:**
-
-```python
-import csv, json, sys
-from pathlib import Path
-
-SOURCE_PATH = Path("<DOCUMENT_PATH>")
-OUTPUT_PATH = Path("<WORK_DIR>/parts.json")
-pretty = "--pretty" in sys.argv
-
-MAKE_OR_BUY_MAP = {
-    # adapt to the actual values in the source document
-    "make": "make", "m": "make", "in-house": "make", "manufactured": "make",
-    "buy": "buy", "b": "buy", "purchase": "buy", "purchased": "buy",
-    "phantom": "phantom", "p": "phantom", "virtual": "phantom",
-    "fabricate": "fabricate", "f": "fabricate", "fab": "fabricate",
-}
-
-with open(SOURCE_PATH, newline="", encoding="utf-8-sig") as f:
-    rows = list(csv.DictReader(f))
-
-parts = []
-errors = []
-for i, row in enumerate(rows, start=2):  # row 1 is the header
-    part_number = row["<part_number_column>"].strip()
-    if not part_number:
-        errors.append(f"Row {i}: missing part_number — skipping")
-        continue
-
-    part = {"part_number": part_number}
-
-    # Optional fields — only include when non-empty
-    desc = row.get("<description_column>", "").strip()
-    if desc:
-        part["description"] = desc
-
-    mob_raw = row.get("<make_or_buy_column>", "").strip().lower()
-    if mob_raw:
-        mob = MAKE_OR_BUY_MAP.get(mob_raw)
-        if mob is None:
-            errors.append(f"Row {i}: unrecognized make_or_buy value '{mob_raw}'")
-        else:
-            part["make_or_buy"] = mob
-
-    # Composed notes (example: append an extra column)
-    extra = row.get("<extra_column>", "").strip()
-    if extra:
-        part["notes"] = f"<Prefix label>: {extra}"
-
-    parts.append(part)
-
-if errors:
-    print("\n".join(errors), file=sys.stderr)
-
-with open(OUTPUT_PATH, "w") as f:
-    json.dump(parts, f, indent=2)
-
-print(json.dumps(parts, indent=2 if pretty else None))
-print(f"{len(parts)} parts generated → {OUTPUT_PATH}", file=sys.stderr)
-```
-
-Adapt the template to the actual column names and mapping. If multiple source columns contribute to `notes`, concatenate them with a separator (e.g. `"; "`).
-
-### 2c. Run the script
-
-```bash
-python3 <WORK_DIR>/convert_to_parts_json.py --pretty 2>&1 | head -60
-```
-
-Review the first few entries. Look for:
-- Any `make_or_buy` errors reported to stderr
-- Rows skipped due to missing `part_number`
-- Unexpected `null` values or empty strings
-
-Confirm with the user that the output looks correct before proceeding.
+Store this array as `PARTS_JSON` for use in the following phases.
 
 ---
 
@@ -202,9 +138,15 @@ Confirm with the user that the output looks correct before proceeding.
 
 Run a dry run to preview what will be created — no data is written to the database.
 
+**MCP:**
+```
+execute_threaded_script(script="threaded task part:bulk-create --parts '<PARTS_JSON>' --organization <ORG_UUID> --dry-run")
+```
+
+**CLI:**
 ```bash
 threaded task part:bulk-create \
-  --parts-file <WORK_DIR>/parts.json \
+  --parts '<PARTS_JSON>' \
   --organization <ORG_UUID> \
   --dry-run
 ```
@@ -212,7 +154,7 @@ threaded task part:bulk-create \
 The dry-run output is printed to stderr. Review it with the user and confirm there are no:
 - Missing required `part_number` fields
 - Invalid `make_or_buy` values (CLI will exit with an error)
-- Part numbers that look like column headers (conversion bug)
+- Part numbers that look like column headers (mapping bug)
 - Obvious truncation or encoding issues in part numbers or descriptions
 
 The final stderr line is a summary:
@@ -228,61 +170,41 @@ Summary: N to create, N conflict(s) with existing parts
 | Skip existing, create new | `--skip-existing` | Re-running after a partial failure; idempotent re-runs |
 | Abort and investigate | — | Unexpected overlap; audit before proceeding |
 
-To see exactly which part numbers conflict, run:
+To see exactly which part numbers conflict:
+
+**MCP:**
+```
+execute_threaded_script(script="threaded task part:list --organization <ORG_UUID> --format table")
+```
+
+**CLI:**
 ```bash
 threaded task part:list --organization <ORG_UUID> --format table
 ```
 
-If issues are found, fix `convert_to_parts_json.py` and re-run the dry run until the preview looks correct.
+If issues are found, fix the mapping in Phase 2 and re-run the dry run until the preview looks correct.
 
 ---
 
 ## Phase 4: Execute the import
 
-### Calling the Threaded CLI
+**MCP:**
+```
+execute_threaded_script(script="threaded task part:bulk-create --parts '<PARTS_JSON>' --organization <ORG_UUID> [--skip-existing] --yes")
+```
 
-> **Important:** `threaded` is a shell function, not a standalone binary. It must be called from a shell where the Threaded CLI has been sourced.
->
-> From a terminal (normal usage):
-> ```bash
-> threaded task part:bulk-create ...
-> ```
->
-> From a Python subprocess, use `zsh -i -c`:
-> ```python
-> import subprocess, json
->
-> THREADED_CLI_PATH = "<path to your Threaded CLI shell aliases file>"
->
-> def run_threaded(cmd_args: str) -> dict | list:
->     result = subprocess.run(
->         ["zsh", "-i", "-c", f"source {THREADED_CLI_PATH}; threaded {cmd_args}"],
->         capture_output=True, text=True,
->     )
->     output = result.stdout
->     idx_obj = output.find('{')
->     idx_arr = output.find('[')
->     candidates = [i for i in [idx_obj, idx_arr] if i != -1]
->     if not candidates:
->         raise RuntimeError(
->             f"No JSON in output (exit {result.returncode}):\n{output[:400]}\nstderr:\n{result.stderr[:400]}"
->         )
->     return json.loads(output[min(candidates):])
-> ```
-
-### Run the import
-
+**CLI:**
 ```bash
 threaded task part:bulk-create \
-  --parts-file <WORK_DIR>/parts.json \
+  --parts '<PARTS_JSON>' \
   --organization <ORG_UUID> \
   [--skip-existing] \
   --yes
 ```
 
-The `--yes` flag skips the interactive confirmation prompt. Omit it if you want the CLI to show a preview and ask for confirmation before creating.
+The `--yes` flag skips the interactive confirmation prompt.
 
-The CLI writes progress to stderr (`Creating part N/M: "part_number"...`). The final JSON result contains `created`, `skipped`, and `parts` (the list of created part records).
+The final JSON result contains `created`, `skipped`, and `parts` (the list of created part records).
 
 ---
 
@@ -290,6 +212,12 @@ The CLI writes progress to stderr (`Creating part N/M: "part_number"...`). The f
 
 ### 5a. List parts
 
+**MCP:**
+```
+execute_threaded_script(script="threaded task part:list --organization <ORG_UUID> --format table")
+```
+
+**CLI:**
 ```bash
 threaded task part:list --organization <ORG_UUID> --format table
 ```
@@ -300,12 +228,24 @@ Confirm:
 
 Filter by part number to quickly find a specific record:
 
+**MCP:**
+```
+execute_threaded_script(script="threaded task part:list --organization <ORG_UUID> --part-number <search_text>")
+```
+
+**CLI:**
 ```bash
 threaded task part:list --organization <ORG_UUID> --part-number <search_text>
 ```
 
 ### 5b. Spot-check individual records
 
+**MCP:**
+```
+execute_threaded_script(script="threaded task part:get --part <part_uuid>")
+```
+
+**CLI:**
 ```bash
 threaded task part:get --part <part_uuid>
 ```
@@ -327,7 +267,6 @@ Source: <filename> (<N> rows)
 Organization: <ORG_UUID>
 Parts created: N
 Parts skipped: N
-Intermediate files: <WORK_DIR>/
 ```
 
 ---
@@ -337,23 +276,20 @@ Intermediate files: <WORK_DIR>/
 **Undoing an import (no bulk-delete exists)**
 There is no `part:bulk-delete` command. To reverse an import:
 1. Note the `created_at` timestamp from the import result JSON
-2. Run `threaded task part:list --organization <ORG_UUID> --format table` to get all part UUIDs
+2. Run `part:list` to get all part UUIDs
 3. Identify imported parts by their `created_at` timestamp
 4. Delete individual parts through the Threaded app UI (Parts → overflow menu → Delete)
 
 Prevention: always use `--dry-run` on production orgs and confirm `conflicts: 0` before committing.
 
 **`make_or_buy` value rejected by CLI**
-The CLI validates `make_or_buy` before sending to the API. Accepted values are `make`, `buy`, `phantom`, `fabricate` (lowercase). Check `convert_to_parts_json.py` — the mapping dict may be missing an entry. Re-run the script after fixing.
-
-**"No JSON in output" from CLI subprocess**
-The `threaded` function wasn't sourced. Ensure the CLI source runs in the same shell invocation as the `threaded` command.
+The CLI validates `make_or_buy` before sending to the API. Accepted values are `make`, `buy`, `phantom`, `fabricate` (lowercase). Check that all source values have been translated correctly in Phase 2.
 
 **Duplicate part_number warning in output**
 By default, `part:bulk-create` warns when a part number already exists in the org but still creates it. Use `--skip-existing` to filter those out instead.
 
 **Rows with blank `part_number`**
-The conversion script should skip these rows and report them. Part number is required — blank entries cannot be imported.
+Skip these rows and report them. Part number is required — blank entries cannot be imported.
 
 **Encoding issues in part numbers**
 Use `encoding="utf-8-sig"` when opening CSVs exported from Excel — this strips the invisible BOM character that appears at the start of the first column name.
@@ -362,4 +298,4 @@ Use `encoding="utf-8-sig"` when opening CSVs exported from Excel — this strips
 Omit the field from the output JSON entirely. The API defaults to `make`. Confirm with the user that this default is correct for their dataset before proceeding.
 
 **Large imports (100+ parts)**
-For very large imports, consider splitting the JSON into batches of ~50 and running multiple `part:bulk-create` calls. The `--skip-existing` flag makes this safe to re-run.
+Split the JSON into batches of ~50 and run multiple `part:bulk-create` calls. The `--skip-existing` flag makes this safe to re-run across batches.
