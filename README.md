@@ -21,11 +21,11 @@ Skills work with the **Threaded MCP server** or the **Threaded CLI**. The MCP se
 
 **MCP (recommended for most users)**
 
-Add the Threaded MCP server to your agent. Instructions are in your Threaded account under **Settings → Integrations → MCP**. Once connected, the agent will detect the MCP runtime automatically and no additional software is needed for tools and parts imports.
+Add the Threaded MCP server to your agent. Once connected, the agent will detect the MCP runtime automatically and no additional software is needed for tools and parts imports.
 
 **CLI**
 
-Install the Threaded CLI from [threadedmfg.com/docs/cli](https://threadedmfg.com/docs/cli), then authenticate:
+Install the Threaded CLI, then authenticate:
 
 ```bash
 threaded auth login
