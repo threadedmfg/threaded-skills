@@ -56,15 +56,15 @@ Use case-insensitive pattern matching against column names:
 | `make.?or.?buy`, `make.?buy`, `^mob$`, `^source$`, `^procurement$` | `make_or_buy` |
 
 **For all remaining columns**, classify by data presence in the sample rows:
-- Has non-empty values → propose append to `notes` (with a prefix label, e.g. `"Vendor: <value>"`)
+- Has non-empty values → propose append to `notes` (with a prefix label, e.g. `"Vendor: <value>"`). Customer-visible business fields such as vendor, cost, and category should default to `notes` unless the user chooses to drop them.
 - Looks like timestamp or audit metadata (e.g. `created_at`, `updated_at`) → propose `DROP`
 
 Common remaining column patterns:
 - "Vendor" / "Supplier" / "Manufacturer" → propose `notes` as `"Vendor: <value>"`
 - "Unit Cost" / "Price" / "Cost ($)" → propose `notes` as `"Cost: <value>"` (parts have no cost field)
-- "Category" / "Type" / "Family" → propose `notes` or `DROP`
-- "Rev" / "Revision" / "Version" → propose `notes` as `"Version: <value>"` or `DROP`
-- "UOM" / "Unit of Measure" → propose `notes` or `DROP`
+- "Category" / "Type" / "Family" → propose `notes` as `"Category: <value>"`
+- "Rev" / "Revision" / "Version" → propose `notes` as `"Version: <value>"`
+- "UOM" / "Unit of Measure" → propose `notes` as `"UOM: <value>"`
 
 **Mapping `make_or_buy` values:**
 
@@ -91,9 +91,9 @@ Proposed mapping for <filename>:
   Part Number       →  part_number    [auto-detected, required]
   Description       →  description    [auto-detected]
   Make or Buy       →  make_or_buy    [auto-detected]
-  Version           →  DROP           [proposed — say "notes" to keep as "Version: <value>"]
-  Supplier          →  DROP           [proposed — say "notes" to keep as "Supplier: <value>"]
-  Unit of Measure   →  DROP           [proposed]
+  Supplier          →  notes          [proposed as "Vendor: <value>" — say "drop" to exclude]
+  Version           →  notes          [proposed as "Version: <value>" — say "drop" to exclude]
+  Unit of Measure   →  notes          [proposed as "UOM: <value>" — say "drop" to exclude]
   Created At        →  DROP           [proposed, timestamp metadata]
   Updated At        →  DROP           [proposed, timestamp metadata]
 
@@ -136,7 +136,7 @@ Store this array as `PARTS_JSON` for use in the following phases.
 
 ## Phase 3: Dry run
 
-Run a dry run to preview what will be created — no data is written to the database.
+**Always run a dry run before importing.** No data is written to the database during this phase.
 
 **MCP:**
 ```
@@ -162,13 +162,13 @@ The final stderr line is a summary:
 Summary: N to create, N conflict(s) with existing parts
 ```
 
-**If `conflicts > 0`**, choose a duplicate strategy before proceeding to the import:
+**If `conflicts > 0`**, stop and ask the user to choose a duplicate strategy before proceeding. Do not run the import until the user has explicitly confirmed their choice:
 
 | Strategy | CLI flag | When to use |
 |---|---|---|
-| Warn and create anyway | _(default)_ | First import; overlaps are unexpected edge cases |
-| Skip existing, create new | `--skip-existing` | Re-running after a partial failure; idempotent re-runs |
-| Abort and investigate | — | Unexpected overlap; audit before proceeding |
+| Skip existing, create new only | `--skip-existing` | Re-running after a partial failure; recommended safe default |
+| Warn and create anyway (may create duplicates) | _(default, no flag)_ | Only if the user explicitly accepts that duplicates may be created |
+| Abort and investigate | — | Unexpected overlap; list existing parts to audit before proceeding |
 
 To see exactly which part numbers conflict:
 
@@ -182,11 +182,13 @@ execute_threaded_script(script="threaded task part:list --organization <ORG_UUID
 threaded task part:list --organization <ORG_UUID> --format table
 ```
 
-If issues are found, fix the mapping in Phase 2 and re-run the dry run until the preview looks correct.
+If issues are found, fix the mapping in Phase 2 and re-run the dry run until the preview looks correct. **Do not proceed to Phase 4 until the user has approved the dry-run preview.**
 
 ---
 
 ## Phase 4: Execute the import
+
+Only run the import after the user has confirmed the dry-run preview and, if there were conflicts, chosen a duplicate strategy.
 
 **MCP:**
 ```
@@ -202,7 +204,7 @@ threaded task part:bulk-create \
   --yes
 ```
 
-The `--yes` flag skips the interactive confirmation prompt.
+The `--yes` flag skips the interactive confirmation prompt. Only add it after the user has confirmed the import.
 
 The final JSON result contains `created`, `skipped`, and `parts` (the list of created part records).
 

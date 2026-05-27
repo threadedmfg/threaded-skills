@@ -13,6 +13,52 @@ AI agent skills for working with Threaded. These skills teach AI agents (Cursor,
 
 \* MCP supports creating folders and WI structure. Media upload and visual attachment require the CLI.
 
+## Before You Start
+
+### 1. Connect your AI agent to Threaded
+
+Skills work with the **Threaded MCP server** or the **Threaded CLI**. The MCP server is the easiest way to get started and requires no local installation.
+
+**MCP (recommended for most users)**
+
+Add the Threaded MCP server to your agent. Instructions are in your Threaded account under **Settings → Integrations → MCP**. Once connected, the agent will detect the MCP runtime automatically and no additional software is needed for tools and parts imports.
+
+**CLI**
+
+Install the Threaded CLI from [threadedmfg.com/docs/cli](https://threadedmfg.com/docs/cli), then authenticate:
+
+```bash
+threaded auth login
+threaded auth status  # confirm you are logged in
+```
+
+### 2. Find your Organization UUID
+
+Most Threaded commands require your organization UUID. To find it, run:
+
+**MCP:**
+```
+execute_threaded_script(script="threaded auth orgs")
+```
+
+**CLI:**
+```bash
+threaded auth orgs
+```
+
+Copy the UUID from the output — it looks like `org-xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx`. You will be asked for this when starting any skill.
+
+### 3. Choose MCP or CLI
+
+| | MCP | CLI |
+|---|---|---|
+| Tools and parts imports | ✓ Full support | ✓ Full support |
+| Work instruction structure (folders, procedures, steps) | ✓ Full support | ✓ Full support |
+| Media upload and visual attachment | — Not supported | ✓ Required |
+| Setup required | None (add MCP server) | Install + authenticate CLI |
+
+If you are importing work instructions **with images**, you need the CLI for the upload and attachment steps, even if you use MCP for everything else.
+
 ## Installation
 
 ### Via npx (recommended)
@@ -51,21 +97,24 @@ cp -r skills/* /path/to/your/project/.claude/skills/
 
 After installing, the agent will automatically discover and use the skills when relevant tasks are requested.
 
+## Quick Start
+
+Here is a typical first import using the `create-tools-from-document` skill:
+
+1. Install the skills and connect your agent to Threaded (see above).
+2. Place your tool inventory file (CSV, XLSX, or JSON) somewhere the agent can read it.
+3. Ask the agent:
+   > "Import my tool inventory from `tool_list.csv` into Threaded."
+4. The agent will:
+   - Read and display the file's columns
+   - Propose a field mapping and wait for your confirmation
+   - Run a dry run and show a preview — **no data is written yet**
+   - Ask you to confirm before creating any records
+5. Review the preview, approve or adjust the mapping, and the import runs.
+
+The same pattern applies to `create-parts-from-document`. Work instruction skills follow the same confirm-before-write flow but involve more phases.
+
 ## Prerequisites
-
-Skills work with the **Threaded MCP server** or the **Threaded CLI**. The MCP server is the easiest way to get started — no local installation required.
-
-### MCP users
-
-Connect your AI agent to the Threaded MCP server and authenticate. Once connected, skills will detect the MCP runtime automatically. No additional software is needed for tools and parts imports.
-
-### CLI users
-
-Install and authenticate the Threaded CLI:
-
-```bash
-threaded auth status  # verify you're logged in
-```
 
 | Skill | Additional requirements |
 |---|---|
@@ -73,3 +122,38 @@ threaded auth status  # verify you're logged in
 | create-parts-from-document | Python 3; `pip3 install openpyxl` for XLSX sources |
 | create-work-instructions-from-document | Python 3; `pip3 install PyMuPDF`; for rasterized PDFs also `brew install tesseract` and `pip3 install pytesseract Pillow` |
 | create-work-instructions-from-video | `brew install ffmpeg`; Python 3 |
+
+## Data Privacy
+
+Source documents, videos, extracted text, video frames, and intermediate JSON files may contain sensitive manufacturing data. Before running any skill:
+
+- Confirm that the AI agent you are using is approved to process the source files.
+- Use a work directory (`WORK_DIR`) on storage you control.
+- Review extracted text and the proposed import JSON before confirming the import.
+- Clean up intermediate files in `WORK_DIR` after import if you do not want them retained on disk.
+
+## Troubleshooting
+
+**`threaded: command not found`**
+The Threaded CLI is not installed or not on your PATH. See the [CLI installation docs](https://threadedmfg.com/docs/cli).
+
+**`Not authenticated` or `401` errors**
+Run `threaded auth login` and follow the prompts, then re-run `threaded auth status` to confirm.
+
+**`No MCP tools found` / agent does not detect Threaded**
+The Threaded MCP server is not connected to your agent. Check **Settings → Integrations → MCP** in your Threaded account for setup instructions.
+
+**`ModuleNotFoundError: No module named 'fitz'`**
+Run `pip3 install PyMuPDF`.
+
+**`ModuleNotFoundError: No module named 'openpyxl'`**
+Run `pip3 install openpyxl`.
+
+**`ffmpeg: command not found`**
+Run `brew install ffmpeg` (macOS) or follow [ffmpeg.org/download.html](https://ffmpeg.org/download.html) for other platforms.
+
+**Media upload steps are skipped or fail**
+Uploading images and video frames requires the Threaded CLI. If you are running via MCP only, the skill will complete the WI structure but cannot upload media. Switch to the CLI for those phases or run the upload steps manually.
+
+**Import created duplicate records**
+By default the CLI warns on duplicate names but still creates the record. Use `--skip-existing` on the next run to skip any already-imported records. There is no bulk-delete command; duplicates must be removed through the Threaded app UI.

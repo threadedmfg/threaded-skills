@@ -14,6 +14,8 @@ description: >-
 
 > **CLI only.** This skill requires the Threaded CLI. Video frame extraction (ffmpeg) and image upload to Threaded are local file operations that the MCP server cannot perform. Ensure `threaded auth status` confirms you are authenticated before starting.
 
+> **Data privacy:** This skill extracts frames from the source video, writes them to `WORK_DIR`, and uploads selected frames to Threaded. Confirm that the AI agent is approved to process this video before proceeding. Review the proposed WI structure in Phase 3 before importing. Clean up `WORK_DIR` after a successful import if you do not want intermediate files retained on disk.
+
 ## Collect inputs before starting
 
 Ask the user for these if not already provided:

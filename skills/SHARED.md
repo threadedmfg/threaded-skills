@@ -82,3 +82,14 @@ threaded task tool:bulk-create --tools '[{"name":"Torque Wrench","cost":"45.00"}
 For large datasets (100+ records), split into batches of ~50 and run multiple commands. The `--skip-existing` flag makes re-runs safe.
 
 **Binary files (images, video):** Uploading binary files requires the CLI. The MCP server does not have access to your local filesystem. Skills that upload images or video are **CLI only** for those steps.
+
+---
+
+## Data privacy reminder
+
+Source files, extracted text, video frames, and intermediate JSON files (such as `media_map.json`, `results.json`, and `extraction.json`) may contain sensitive manufacturing data. Before processing any files:
+
+- Confirm that the AI agent is approved to read the source document or video.
+- Set `WORK_DIR` to a location on storage you control.
+- Review extracted text and the generated import JSON before confirming any import.
+- Clean up `WORK_DIR` after a successful import if you do not want intermediate files retained on disk.

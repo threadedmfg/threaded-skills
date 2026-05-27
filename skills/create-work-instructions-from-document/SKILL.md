@@ -16,6 +16,8 @@ description: >-
 
 > **MCP users — media upload limitation:** Uploading images and attaching visuals (Phases 7 and 9) requires the Threaded CLI. If you are running via MCP only, you can complete Phases 1–6 and Phase 8 to create the folder and WI structure, but you will need CLI access to upload images and attach them as visuals.
 
+> **Data privacy:** This skill reads the full text and images from the source document, writes intermediate files to `WORK_DIR`, and uploads images to Threaded. Confirm that the AI agent is approved to process this document before proceeding. Review the generated JSON in Phase 6 before importing. Clean up `WORK_DIR` after a successful import if you do not want intermediate files retained on disk.
+
 ## Collect inputs before starting
 
 Ask the user for these if not already provided:

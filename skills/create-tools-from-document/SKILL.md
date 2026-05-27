@@ -56,14 +56,14 @@ Use case-insensitive pattern matching against column names:
 | `^cost$`, `unit.?cost`, `^price$`, `cost.\$` | `cost` (strip `$`, commas, currency symbols) |
 
 **For all remaining columns**, classify by data presence in the sample rows:
-- Has non-empty values → propose append to `notes` (with a prefix label)
+- Has non-empty values → propose append to `notes` (with a prefix label). Customer-visible business fields such as operations, category, or asset identifiers should default to `notes` unless the user chooses to drop them.
 - Looks like timestamp or audit metadata (e.g. `created_at`, `updated_at`) → propose `DROP`
 
 Common remaining column patterns:
 - "Used In Operations" / "Operations" / "Process" → propose `notes` as `"Used in operations: <value>"`
-- "Version" / "Rev" / "Revision" → propose `DROP` (not a tool model field)
-- "Category" / "Type" → propose `notes` or `DROP`
-- "Serial" / "Asset Tag" / "ID" → propose `notes` if the user wants to preserve it
+- "Category" / "Type" → propose `notes` as `"Category: <value>"`
+- "Serial" / "Asset Tag" / "ID" → propose `notes` as `"Asset ID: <value>"`
+- "Version" / "Rev" / "Revision" → propose `DROP` (version is not a tool model field; mention this to the user)
 
 ### 1c. Confirm the full mapping in a single step
 
@@ -76,8 +76,8 @@ Proposed mapping for <filename>:
   Name              →  name           [auto-detected, required]
   Description       →  description    [auto-detected]
   Cost ($)          →  cost           [auto-detected, strip "$"]
-  Used In Ops       →  DROP           [proposed — say "notes" to keep as "Used in operations: <value>"]
-  Version           →  DROP           [proposed]
+  Used In Ops       →  notes          [proposed as "Used in operations: <value>" — say "drop" to exclude]
+  Version           →  DROP           [proposed — version is not a tool field; say "notes" to keep as "Version: <value>"]
   Created At        →  DROP           [proposed, timestamp metadata]
 
 Reply with any changes, or "ok" to proceed.
@@ -118,7 +118,7 @@ Store this array as `TOOLS_JSON` for use in the following phases.
 
 ## Phase 3: Dry run
 
-Run a dry run to preview what will be created — no data is written to the database.
+**Always run a dry run before importing.** No data is written to the database during this phase.
 
 **MCP:**
 ```
@@ -144,13 +144,13 @@ The final stderr line is a summary:
 Summary: N to create, N conflict(s) with existing tools
 ```
 
-**If `conflicts > 0`**, choose a duplicate strategy before proceeding to the import:
+**If `conflicts > 0`**, stop and ask the user to choose a duplicate strategy before proceeding. Do not run the import until the user has explicitly confirmed their choice:
 
 | Strategy | CLI flag | When to use |
 |---|---|---|
-| Warn and create anyway | _(default)_ | First import; overlaps are unexpected edge cases |
-| Skip existing, create new | `--skip-existing` | Re-running after a partial failure; idempotent re-runs |
-| Abort and investigate | — | Unexpected overlap; audit before proceeding |
+| Skip existing, create new only | `--skip-existing` | Re-running after a partial failure; recommended safe default |
+| Warn and create anyway (may create duplicates) | _(default, no flag)_ | Only if the user explicitly accepts that duplicates may be created |
+| Abort and investigate | — | Unexpected overlap; list existing tools to audit before proceeding |
 
 To see exactly which tool names conflict:
 
@@ -164,11 +164,13 @@ execute_threaded_script(script="threaded task tool:list --organization <ORG_UUID
 threaded task tool:list --organization <ORG_UUID> --format table
 ```
 
-If issues are found, fix the mapping in Phase 2 and re-run the dry run until the preview looks correct.
+If issues are found, fix the mapping in Phase 2 and re-run the dry run until the preview looks correct. **Do not proceed to Phase 4 until the user has approved the dry-run preview.**
 
 ---
 
 ## Phase 4: Execute the import
+
+Only run the import after the user has confirmed the dry-run preview and, if there were conflicts, chosen a duplicate strategy.
 
 **MCP:**
 ```
@@ -184,7 +186,7 @@ threaded task tool:bulk-create \
   --yes
 ```
 
-The `--yes` flag skips the interactive confirmation prompt.
+The `--yes` flag skips the interactive confirmation prompt. Only add it after the user has confirmed the import.
 
 The final JSON result contains `created`, `skipped`, and `tools` (the list of created tool records).
 
