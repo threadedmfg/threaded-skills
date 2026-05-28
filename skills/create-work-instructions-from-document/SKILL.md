@@ -12,7 +12,7 @@ description: >-
 
 # Create Work Instructions from a Document
 
-> **Before starting:** Read `skills/SHARED.md` (or the `threaded-runner-setup` skill) to determine whether you are running via MCP or CLI, check auth status, and confirm the organization UUID.
+> **Before starting:** Read the `REQUIRED-threaded-runner-setup` skill to determine whether you are running via MCP or CLI, check auth status, and confirm the organization UUID.
 
 > **MCP users — media upload limitation:** Uploading images and attaching visuals (Phases 7 and 9) requires the Threaded CLI. If you are running via MCP only, you can complete Phases 1–6 and Phase 8 to create the folder and WI structure, but you will need CLI access to upload images and attach them as visuals.
 

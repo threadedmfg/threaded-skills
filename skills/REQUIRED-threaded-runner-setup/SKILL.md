@@ -1,5 +1,5 @@
 ---
-name: threaded-runner-setup
+name: REQUIRED-threaded-runner-setup
 description: >-
   Detect available Threaded runtime (MCP server or local CLI) and run commands
   in the correct mode. Read this before starting any Threaded skill.

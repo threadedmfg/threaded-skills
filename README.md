@@ -6,6 +6,7 @@ AI agent skills for working with Threaded. These skills teach AI agents (Cursor,
 
 | Skill | Description | MCP | CLI |
 |---|---|---|---|
+| [REQUIRED-threaded-runner-setup](skills/REQUIRED-threaded-runner-setup/) | **Required by all skills.** Detects your runtime (MCP or CLI), checks auth, and confirms your organization UUID | ✓ | ✓ |
 | [create-tools-from-document](skills/create-tools-from-document/) | Import a tool inventory from a CSV, spreadsheet, or JSON file into Threaded | ✓ | ✓ |
 | [create-parts-from-document](skills/create-parts-from-document/) | Import a part library from a CSV, spreadsheet, or JSON file into Threaded | ✓ | ✓ |
 | [create-work-instructions-from-document](skills/create-work-instructions-from-document/) | Import work instructions from a document — extracts images, structures procedures, and creates WIs with visuals attached | Partial* | ✓ |
@@ -66,19 +67,22 @@ If you are importing work instructions **with images**, you need the CLI for the
 Use [`npx skills`](https://github.com/vercel-labs/skills) to install to Cursor, Claude Code, and [50+ other agents](https://github.com/vercel-labs/skills#supported-agents):
 
 ```bash
-# Install all skills to your project
+# Install all skills to your project (recommended)
 npx skills add threadedmfg/threaded-skills
 
 # Install globally (available across all your projects)
 npx skills add threadedmfg/threaded-skills --global
 
-# Install a specific skill
-npx skills add threadedmfg/threaded-skills --skill create-work-instructions-from-document
-
 # Install to a specific agent
 npx skills add threadedmfg/threaded-skills --agent cursor
 npx skills add threadedmfg/threaded-skills --agent claude-code
 ```
+
+> **Note:** `REQUIRED-threaded-runner-setup` is required by all other skills — always install it alongside whichever skills you choose. If you are selecting skills individually, include it:
+>
+> ```bash
+> npx skills add threadedmfg/threaded-skills --skill REQUIRED-threaded-runner-setup --skill create-work-instructions-from-document
+> ```
 
 ### Manual install
 

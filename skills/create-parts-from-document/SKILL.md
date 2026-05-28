@@ -10,7 +10,7 @@ description: >-
 
 # Create Parts from a Document
 
-> **Before starting:** Read `skills/SHARED.md` (or the `threaded-runner-setup` skill) to determine whether you are running via MCP or CLI, check auth status, and confirm the organization UUID.
+> **Before starting:** Read the `REQUIRED-threaded-runner-setup` skill to determine whether you are running via MCP or CLI, check auth status, and confirm the organization UUID.
 
 ## Collect inputs before starting
 
