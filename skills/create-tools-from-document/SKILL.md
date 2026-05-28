@@ -5,12 +5,12 @@ description: >-
   spreadsheet, JSON, etc.) into a Threaded organization. Works with the
   Threaded MCP server or directly with the Threaded CLI. Use when a user has
   an existing tool list in any tabular format and wants to add those tools to
-  Threaded.
+  Threaded. 
 ---
 
 # Create Tools from a Document
 
-> **Before starting:** Read `skills/SHARED.md` (or the `threaded-runner-setup` skill) to determine whether you are running via MCP or CLI, check auth status, and confirm the organization UUID.
+> **Before starting:** Read the `REQUIRED-threaded-runner-setup` skill to determine whether you are running via MCP or CLI, check auth status, and confirm the organization UUID.
 
 ## Collect inputs before starting
 
