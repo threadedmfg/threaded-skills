@@ -1,0 +1,61 @@
+<!-- EXAMPLE: Line chart (Chart.js)
+     Renders a time-series line chart from a SQL query.
+     Expected query shape: SELECT period_label, value FROM <view> ORDER BY sort_key
+     Requires Chart.js to be loaded before this section (see SKILL.md Phase 3a for the SRI-locked script tag).
+     Copy this section into the report HTML and replace the query and canvas ID. -->
+
+<section class="chart-section">
+  <div class="section-header">
+    <h3 class="card-title">
+      Monthly Trend
+      <button class="insight-btn" data-insight="monthly">✦</button>
+    </h3>
+  </div>
+  <div class="chart-card">
+    <canvas id="line-chart-canvas"></canvas>
+  </div>
+</section>
+
+<style>
+/* Shares .chart-card style with bar-chart.html — include once in the report */
+</style>
+
+<script>
+function renderLineChart(db) {
+  // Replace this query with your actual time-series query.
+  // The view should have one row per period, sorted chronologically.
+  const rows = db.exec(`
+    SELECT strftime('%b %Y', month) AS period, total_revenue
+    FROM v_monthly_revenue
+    ORDER BY month
+  `);
+
+  if (!rows.length) return;
+  const labels = rows[0].values.map(r => r[0]);
+  const values = rows[0].values.map(r => r[1]);
+
+  new Chart(document.getElementById('line-chart-canvas'), {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Revenue',
+        data: values,
+        borderColor: 'rgba(37, 99, 235, 1)',
+        backgroundColor: 'rgba(37, 99, 235, 0.08)',
+        borderWidth: 2,
+        pointRadius: 3,
+        fill: true,
+        tension: 0.3,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { ticks: { callback: v => '$' + v.toLocaleString() } }
+      }
+    }
+  });
+}
+</script>
