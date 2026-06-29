@@ -212,10 +212,18 @@ If the existing `docs/schema.md` only covers tables, add a second diagram block 
 
 Create a self-contained HTML file with these components:
 
-**Required CDN scripts:**
+**Required scripts (CDN with SRI + vendored wasm):**
 ```html
-<script src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<!-- sql.js 1.10.3 — SRI-locked, wasm loaded from vendor/ -->
+<script
+  src="https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/sql-wasm.js"
+  integrity="sha384-8D3Rsfo535FqoC1pHCCQMrNf75UgzyoG/HQm9zOzITRrz3QKzecc2E7JXKGCXoWu"
+  crossorigin="anonymous"></script>
+<!-- Chart.js 4.5.1 — SRI-locked -->
+<script
+  src="https://cdn.jsdelivr.net/npm/chart.js@4.5.1/dist/chart.umd.min.js"
+  integrity="sha384-jb8JQMbMoBUzgWatfe6COACi2ljcDdZQ2OxczGA3bGNeWe+6DChMTBJemed7ZnvJ"
+  crossorigin="anonymous"></script>
 ```
 
 **Standard loading pattern:**
@@ -226,7 +234,8 @@ async function main() {
     if (!dataUrl) { showError('No data URL'); return; }
 
     const sqlPromise = initSqlJs({
-        locateFile: file => `https://cdnjs.cloudflare.com/ajax/libs/sql.js/1.10.3/${file}`
+        // wasm is vendored locally — not covered by script-tag SRI
+        locateFile: file => `vendor/${file}`
     });
     const dataPromise = fetch(dataUrl).then(r => r.arrayBuffer());
     const [SQL, buf] = await Promise.all([sqlPromise, dataPromise]);
@@ -248,13 +257,34 @@ async function main() {
 - Add sparkle buttons (`<button class="insight-btn" data-insight="key">✦</button>`) to each section header
 
 **Placeholder sections:**
-For each requested chart type, generate a section with:
+For each requested chart type, read the corresponding snippet from the `examples/` folder in this skill's directory before generating that section. Use the snippet as the starting point and adapt it to the actual query and column names confirmed in Phase 1:
+
+| Chart type | Example file |
+|---|---|
+| Stat chips / KPI row | `examples/stat-chips.html` |
+| Bar chart | `examples/bar-chart.html` |
+| Line chart / time series | `examples/line-chart.html` |
+| Sortable data table | `examples/data-table.html` |
+| Date range + filter controls | `examples/filters.html` |
+
+Each section should include:
 - A container div with a descriptive ID
 - A card-title div with the section name and sparkle button
-- A `<!-- TODO: implement <chart_type> -->` comment
-- A stub `render<Section>(db)` function that runs a placeholder query
+- The render function from the example, with the placeholder query replaced by the real one
+- A `<!-- TODO: implement <chart_type> -->` comment only for chart types not covered by an example
 
-### 3b. Create companion files
+### 3b. Copy vendored wasm
+
+The JS libraries load from CDN with SRI verification. Only `sql-wasm.wasm` must be copied locally because it is fetched dynamically at runtime and cannot be covered by a script-tag `integrity` attribute:
+
+```bash
+mkdir -p <report_dir>/vendor/
+cp <skill_dir>/vendor/sql-wasm.wasm <report_dir>/vendor/sql-wasm.wasm
+```
+
+Where `<skill_dir>` is the directory containing this `SKILL.md` file and `<report_dir>` is the directory where the report HTML will be written (e.g., `reports/`).
+
+### 3c. Create companion files
 
 **`{slug}.sql`** — stub SQL queries for each chart section:
 
@@ -434,5 +464,8 @@ Verify the database file exists and is a valid SQLite file. Check that the CLI i
 **`build_insights.py` not found**
 The injection script should be in a `scripts/` directory near the report files. If it doesn't exist yet, you can copy it from an existing report group — the script is generic and works with any report that has the markers.
 
-**Chart.js or sql.js CDN unavailable**
-The HTML relies on CDN-hosted libraries. If the CDN is unreachable, the report won't render. Consider pinning specific CDN versions for stability.
+**Wasm file missing after report creation**
+If the browser console shows `Failed to load resource: vendor/sql-wasm.wasm`, the wasm file was not copied next to the report. Run the copy step from Phase 3b manually: `cp <skill_dir>/vendor/sql-wasm.wasm <report_dir>/vendor/sql-wasm.wasm`.
+
+**Script blocked by browser (SRI failure)**
+If the browser console shows `Failed to find a valid digest in the 'integrity' attribute`, the CDN served a file that does not match the pinned hash. Do not bypass this — it means the CDN content has changed. Update the `src` URL to the correct pinned version and regenerate the `integrity` hash with `cat <file>.js | openssl dgst -sha384 -binary | base64`.

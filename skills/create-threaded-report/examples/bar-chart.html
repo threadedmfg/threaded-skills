@@ -1,0 +1,65 @@
+<!-- EXAMPLE: Bar chart (Chart.js)
+     Renders a vertical bar chart from a SQL query.
+     Expected query shape: SELECT label, value FROM <view> ORDER BY value DESC
+     Requires Chart.js to be loaded before this section (see SKILL.md Phase 3a for the SRI-locked script tag).
+     Copy this section into the report HTML and replace the query and canvas ID. -->
+
+<section class="chart-section">
+  <div class="section-header">
+    <h3 class="card-title">
+      Revenue by Product
+      <button class="insight-btn" data-insight="pareto">✦</button>
+    </h3>
+  </div>
+  <div class="chart-card">
+    <canvas id="bar-chart-canvas"></canvas>
+  </div>
+</section>
+
+<style>
+.chart-card {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 0.75rem;
+  padding: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+</style>
+
+<script>
+function renderBarChart(db) {
+  // Replace this query with your actual bar chart query
+  const rows = db.exec(`
+    SELECT product_name, SUM(revenue) AS total
+    FROM order_line_items
+    JOIN products USING (product_id)
+    GROUP BY product_name
+    ORDER BY total DESC
+    LIMIT 15
+  `);
+
+  if (!rows.length) return;
+  const labels = rows[0].values.map(r => r[0]);
+  const values = rows[0].values.map(r => r[1]);
+
+  new Chart(document.getElementById('bar-chart-canvas'), {
+    type: 'bar',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Revenue',
+        data: values,
+        backgroundColor: 'rgba(37, 99, 235, 0.7)',
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: { ticks: { callback: v => '$' + v.toLocaleString() } }
+      }
+    }
+  });
+}
+</script>

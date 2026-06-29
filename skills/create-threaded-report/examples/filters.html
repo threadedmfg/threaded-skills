@@ -1,0 +1,107 @@
+<!-- EXAMPLE: Filter controls bar
+     Provides date-range buttons, a category dropdown, and a search input.
+     Wire the onChange handlers to re-run the relevant render functions.
+     Copy this section near the top of the report HTML (before charts/tables)
+     and replace the dropdown options and handler calls with your actual data. -->
+
+<section class="filters-section">
+  <!-- Date range quick-select buttons -->
+  <div class="filter-group">
+    <span class="filter-label">Period</span>
+    <div class="btn-group" id="date-range-btns">
+      <button class="range-btn active" data-days="30"  onclick="setDateRange(30)">30D</button>
+      <button class="range-btn"        data-days="90"  onclick="setDateRange(90)">90D</button>
+      <button class="range-btn"        data-days="365" onclick="setDateRange(365)">YTD</button>
+      <button class="range-btn"        data-days="0"   onclick="setDateRange(0)">All</button>
+    </div>
+  </div>
+
+  <!-- Category dropdown -->
+  <div class="filter-group">
+    <span class="filter-label">Category</span>
+    <select id="category-filter" onchange="onCategoryChange(this.value)">
+      <option value="">All</option>
+      <!-- Options populated dynamically from DB, or list statically: -->
+      <!-- <option value="make">Make</option> -->
+      <!-- <option value="buy">Buy</option>  -->
+    </select>
+  </div>
+
+  <!-- Free-text search (wired to the data table if present) -->
+  <div class="filter-group">
+    <span class="filter-label">Search</span>
+    <input type="search" id="global-search" placeholder="Search…" oninput="onSearchChange(this.value)" />
+  </div>
+</section>
+
+<style>
+.filters-section {
+  display: flex;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  align-items: center;
+  margin-bottom: 1.5rem;
+}
+.filter-group { display: flex; align-items: center; gap: 0.5rem; }
+.filter-label { font-size: 0.8rem; color: var(--muted, #6b7280); white-space: nowrap; }
+.btn-group { display: flex; gap: 0; }
+.range-btn {
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--border, #e5e7eb);
+  background: var(--card-bg, #fff);
+  cursor: pointer;
+  font-size: 0.8rem;
+}
+.range-btn:first-child { border-radius: 0.4rem 0 0 0.4rem; }
+.range-btn:last-child  { border-radius: 0 0.4rem 0.4rem 0; }
+.range-btn + .range-btn { border-left: none; }
+.range-btn.active { background: var(--accent, #2563eb); color: #fff; border-color: var(--accent, #2563eb); }
+select, #global-search {
+  padding: 0.3rem 0.65rem;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 0.4rem;
+  font-size: 0.85rem;
+}
+</style>
+
+<script>
+// Track active filter state
+const filters = { days: 30, category: '', search: '' };
+
+function setDateRange(days) {
+  filters.days = days;
+  document.querySelectorAll('.range-btn').forEach(b => b.classList.toggle('active', +b.dataset.days === days));
+  applyFilters();
+}
+
+function onCategoryChange(val) {
+  filters.category = val;
+  applyFilters();
+}
+
+function onSearchChange(val) {
+  filters.search = val;
+  applyFilters();
+}
+
+function applyFilters() {
+  // Re-render all sections that respond to filters.
+  // Replace these calls with the actual render functions in your report.
+  if (typeof renderBarChart === 'function') renderBarChart(window._db, filters);
+  if (typeof renderLineChart === 'function') renderLineChart(window._db, filters);
+  if (typeof filterTable === 'function') filterTable(filters.search);
+}
+
+function populateCategoryDropdown(db) {
+  // Replace this query with one that returns distinct category values from your data
+  const rows = db.exec(`SELECT DISTINCT make_or_buy FROM parts ORDER BY 1`);
+  if (!rows.length) return;
+  const select = document.getElementById('category-filter');
+  rows[0].values.forEach(([val]) => {
+    const opt = document.createElement('option');
+    opt.value = val;
+    opt.textContent = val.charAt(0).toUpperCase() + val.slice(1);
+    select.appendChild(opt);
+  });
+}
+</script>

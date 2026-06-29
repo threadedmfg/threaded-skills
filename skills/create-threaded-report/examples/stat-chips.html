@@ -1,0 +1,67 @@
+<!-- EXAMPLE: Stat chips row
+     Renders a row of KPI summary chips from a SQL query.
+     Expected query shape: SELECT label, value, unit FROM <view>
+     Copy this section into the report HTML and replace the query. -->
+
+<section class="stat-chips-section">
+  <div class="section-header">
+    <h3 class="card-title">
+      Summary
+      <button class="insight-btn" data-insight="stats">✦</button>
+    </h3>
+  </div>
+  <div id="stat-chips" class="chips-row"></div>
+</section>
+
+<style>
+.chips-row {
+  display: flex;
+  gap: 1rem;
+  flex-wrap: wrap;
+  margin-bottom: 1.5rem;
+}
+.chip {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 0.75rem;
+  padding: 1rem 1.5rem;
+  min-width: 140px;
+  flex: 1;
+}
+.chip-value {
+  font-size: 1.75rem;
+  font-weight: 700;
+  color: var(--accent, #2563eb);
+  line-height: 1;
+}
+.chip-label {
+  font-size: 0.8rem;
+  color: var(--muted, #6b7280);
+  margin-top: 0.25rem;
+}
+</style>
+
+<script>
+function renderStatChips(db) {
+  // Replace this query with your actual KPI query
+  const rows = db.exec(`
+    SELECT 'Total Orders' AS label, COUNT(*) AS value, '' AS unit FROM orders
+    UNION ALL
+    SELECT 'Total Revenue', ROUND(SUM(amount), 0), '$' FROM orders
+    UNION ALL
+    SELECT 'Avg Order Value', ROUND(AVG(amount), 2), '$' FROM orders
+  `);
+
+  if (!rows.length) return;
+  const container = document.getElementById('stat-chips');
+  rows[0].values.forEach(([label, value, unit]) => {
+    const chip = document.createElement('div');
+    chip.className = 'chip';
+    chip.innerHTML = `
+      <div class="chip-value">${unit}${Number(value).toLocaleString()}</div>
+      <div class="chip-label">${label}</div>
+    `;
+    container.appendChild(chip);
+  });
+}
+</script>

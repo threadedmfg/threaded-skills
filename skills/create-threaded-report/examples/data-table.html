@@ -1,0 +1,97 @@
+<!-- EXAMPLE: Sortable, searchable data table
+     Renders a table with client-side sort and free-text search.
+     Expected query shape: SELECT col1, col2, ... FROM <view>
+     No external dependencies beyond the standard report styles.
+     Copy this section into the report HTML and replace the query, column headers, and table ID. -->
+
+<section class="table-section">
+  <div class="section-header">
+    <h3 class="card-title">
+      Detail
+      <button class="insight-btn" data-insight="table">✦</button>
+    </h3>
+    <input
+      id="table-search"
+      type="search"
+      placeholder="Search…"
+      oninput="filterTable(this.value)"
+      class="table-search"
+    />
+  </div>
+  <div class="table-card">
+    <table id="detail-table">
+      <thead>
+        <tr>
+          <!-- Replace with actual column headers; add onclick="sortTable(n)" per column -->
+          <th onclick="sortTable(0)">Part Number ↕</th>
+          <th onclick="sortTable(1)">Description ↕</th>
+          <th onclick="sortTable(2)">Status ↕</th>
+          <th onclick="sortTable(3)">Value ↕</th>
+        </tr>
+      </thead>
+      <tbody id="detail-table-body"></tbody>
+    </table>
+  </div>
+</section>
+
+<style>
+.table-card {
+  background: var(--card-bg, #fff);
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 0.75rem;
+  overflow: hidden;
+  margin-bottom: 1.5rem;
+}
+table { width: 100%; border-collapse: collapse; font-size: 0.875rem; }
+thead { background: var(--header-bg, #f9fafb); }
+th, td { padding: 0.6rem 0.85rem; text-align: left; border-bottom: 1px solid var(--border, #e5e7eb); }
+th { cursor: pointer; user-select: none; font-weight: 600; white-space: nowrap; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--row-hover, #f0f4ff); }
+.table-search {
+  padding: 0.35rem 0.65rem;
+  border: 1px solid var(--border, #e5e7eb);
+  border-radius: 0.4rem;
+  font-size: 0.85rem;
+  width: 200px;
+}
+.section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+</style>
+
+<script>
+let _tableRows = [];
+let _sortCol = -1;
+let _sortAsc = true;
+
+function renderDataTable(db) {
+  // Replace this query with your actual detail query
+  const rows = db.exec(`
+    SELECT part_number, description, status, unit_cost
+    FROM parts
+    ORDER BY part_number
+  `);
+
+  if (!rows.length) return;
+  _tableRows = rows[0].values;
+  renderTableBody(_tableRows);
+}
+
+function renderTableBody(rows) {
+  const tbody = document.getElementById('detail-table-body');
+  tbody.innerHTML = rows.map(r => `<tr>${r.map(v => `<td>${v ?? ''}</td>`).join('')}</tr>`).join('');
+}
+
+function filterTable(query) {
+  const q = query.toLowerCase();
+  renderTableBody(q ? _tableRows.filter(r => r.some(v => String(v ?? '').toLowerCase().includes(q))) : _tableRows);
+}
+
+function sortTable(col) {
+  if (_sortCol === col) { _sortAsc = !_sortAsc; } else { _sortCol = col; _sortAsc = true; }
+  const sorted = [..._tableRows].sort((a, b) => {
+    const av = a[col] ?? '', bv = b[col] ?? '';
+    return _sortAsc ? (av > bv ? 1 : av < bv ? -1 : 0) : (av < bv ? 1 : av > bv ? -1 : 0);
+  });
+  renderTableBody(sorted);
+}
+</script>
